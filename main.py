@@ -688,7 +688,13 @@ async def analyze_issue(
                 return {"success": False, "error": f"AI service error: {response.status_code}"}
     except Exception as e:
         return {"success": False, "error": str(e)}
-
+@app.get("/health")
+def health():
+    return {
+        "status": "healthy",
+        "service": "smart-city-backend",
+        "environment": ENVIRONMENT,
+    }
 @app.get("/ai/health")
 async def ai_health_check():
     try:
