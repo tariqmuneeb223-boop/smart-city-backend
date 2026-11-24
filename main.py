@@ -110,13 +110,29 @@ limiter = Limiter(key_func=get_rate_limit_key)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# ✅ CORS
+# CORS: allow the local Vite Authority Dashboard during development.
+# Vite normally runs on http://localhost:5173.
+# Port 4173 is included for `vite preview` if you use it.
+# Add your deployed dashboard URL to DASHBOARD_ORIGINS in Render later.
+_dashboard_origins = [
+    origin.strip()
+    for origin in os.getenv("DASHBOARD_ORIGINS", "").split(",")
+    if origin.strip()
+]
+_allowed_origins = list(dict.fromkeys([
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:4173",
+    "http://127.0.0.1:4173",
+    *_dashboard_origins,
+]))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"],
 )
 
 # ✅ Request Logging Middleware
@@ -688,8 +704,9 @@ async def analyze_issue(
                 return {"success": False, "error": f"AI service error: {response.status_code}"}
     except Exception as e:
         return {"success": False, "error": str(e)}
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health():
+    """Lightweight health endpoint for browser checks and uptime monitoring."""
     return {
         "status": "healthy",
         "service": "smart-city-backend",
